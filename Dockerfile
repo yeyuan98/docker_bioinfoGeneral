@@ -88,6 +88,7 @@ RUN echo 'export PYTHONPATH="/usr/local/bin/.local.pip3/lib/python3.9/site-packa
 # Copy snakemake workflows and the manager script
 COPY ./snakemakeWorkflows /usr/local/bin/snakemakeWorkflows
 RUN echo 'export PATH="$PATH:/usr/local/bin/snakemakeWorkflows/bin"' >> ~/.profile
+RUN chmod -R 777 /usr/local/bin/snakemakeWorkflows/bin
 
 # Create container temporary folder
 RUN mkdir /home/temp

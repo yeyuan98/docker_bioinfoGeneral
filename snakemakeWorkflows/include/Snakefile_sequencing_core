@@ -1,0 +1,123 @@
+# Snakefile for Illumina paired- or single-end sequencing workflows
+#   Need to pair with a configuration file that has the following entries:
+#       input_type: paired | single
+#   Requires input FASTQ gzipped in the following naming convention:
+#       Single-end: {sample}.fastq.gz
+#       Paired-end: {sample}_1.fastq.gz, {sample}_2.fastq.gz
+#   This base file contains rules to perform trimming by trim_galore and running FastQC pre- and post-trimming
+#       Trimmed files with following naming convention:
+#           Single-end: trimmed/{sample}_trimmed.fq.gz
+#           Paired-end: ["trimmed/{sample}_1_val_1.fq.gz", "trimmed/{sample}_2_val_2.fq.gz"]
+#       FastQC will generate outputs under folders:
+#           fastqc/pre_trim, fastqc/post_trim
+
+# Put the following at top of the final workflow:
+## Configuration file loading
+#configfile: "<WORKFLOW_NAME>.yaml"
+## Import core rules
+#include: "/usr/local/bin/snakemakeWorkflows/include/Snakefile_sequencing_core"
+## Detect samples from input files
+#if config['input_type'] == "paired":
+#    SAMPLES, = glob_wildcards("rawdata/{sample}_1.fastq.gz")
+#else:
+#    SAMPLES, = glob_wildcards("rawdata/{sample}.fastq.gz")
+
+# Force run quality control rule, input function
+def fastqc_input(wildcards):
+    if (config['input_type'] == "paired"):
+        pre_1 = expand("fastqc/pre_trim/{sample}_1_fastqc.html", sample=SAMPLES)
+        pre_2 = expand("fastqc/pre_trim/{sample}_1_fastqc.html", sample=SAMPLES)
+        post_1 = expand("fastqc/post_trim/{sample}_1_val_1_fastqc.html", sample=SAMPLES)
+        post_2 = expand("fastqc/post_trim/{sample}_2_val_2_fastqc.html", sample=SAMPLES)
+        return pre_1 + pre_2 + post_1 + post_2
+    elif (config['input_type'] == "single"):
+        pre = expand("fastqc/pre_trim/{sample}_fastqc.html", sample=SAMPLES)
+        post = expand("fastqc/post_trim/{sample}_trimmed_fastqc.html", sample=SAMPLES)
+        return pre + post
+    else:
+        raise Exception("Invalid input_type in config.")
+
+## Final output targets - customize by workflow
+## Note: to use the samtools rules, alignment must be alignment/{sample}.bam
+#rule all:
+#    input:
+#        # Alignment
+#        expand("alignment/{sample}.sorted.bam.bai", sample=SAMPLES),
+#        # fastQC (rules see end)
+#        fastqc_input
+
+# Read trimming with Trim Galore
+rule trim_galore:
+    input:
+        "rawdata/{sample}.fastq.gz" if config['input_type'] == "single" else 
+        ["rawdata/{sample}_1.fastq.gz", "rawdata/{sample}_2.fastq.gz"]
+    output:
+        "trimmed/{sample}_trimmed.fq.gz" if config['input_type'] == "single" else 
+        ["trimmed/{sample}_1_val_1.fq.gz", "trimmed/{sample}_2_val_2.fq.gz"]
+    log: "logs/trim_galore_{sample}.log"
+    resources:
+        mem_mb=config['trim_galore']['mem_mb'],
+        threads=config['trim_galore']['thread']
+    params:
+        args=config['trim_galore'][config['input_type']]
+    shell:
+        ("trim_galore {params.args} --cores {resources.threads} "
+         "--output_dir trimmed {input} 2> {log}")
+
+# SAM to sorted BAM conversion
+rule samtools_sort:
+    input:
+        "alignment/{sample}.sam"
+    output:
+        "alignment/{sample}.sorted.bam"
+    log: "logs/samtools_sort_{sample}.log"
+    resources:
+        mem_mb=config['samtools']['mem_mb'],
+        threads=config['samtools']['thread']
+    shell:
+        ("samtools sort -@ {resources.threads} {input} "
+         "-o {output} 2> {log} && rm {input}")
+
+# BAM indexing
+rule samtools_index:
+    input:
+        "alignment/{sample}.sorted.bam"
+    output:
+        "alignment/{sample}.sorted.bam.bai"
+    log: "logs/samtools_index_{sample}.log"
+    resources:
+        mem_mb=config['samtools']['mem_mb'],
+        threads=config['samtools']['thread']
+    shell:
+        "samtools index -@ {resources.threads} {input} 2> {log}"
+
+# Quality control before trimming
+rule fastqc_pre_trim:
+    input:
+        "rawdata/{sample}.fastq.gz" if config['input_type'] == "single" else 
+        ["rawdata/{sample}_1.fastq.gz", "rawdata/{sample}_2.fastq.gz"]
+    output:
+        "fastqc/pre_trim/{sample}_fastqc.html" if config['input_type'] == "single" else 
+        ["fastqc/pre_trim/{sample}_1_fastqc.html", "fastqc/pre_trim/{sample}_2_fastqc.html"]
+    log: "logs/fastqc_pre_{sample}.log"
+    resources:
+        mem_mb=2048,
+        threads=2
+    shell:
+        "fastqc {input} -o fastqc/pre_trim/ -t {resources.threads} "
+        "2> {log}"
+
+# Quality control after trimming
+rule fastqc_post_trim:
+    input:
+        rules.trim_galore.output
+    output:
+        "fastqc/post_trim/{sample}_trimmed_fastqc.html" if config['input_type'] == "single" else 
+        ["fastqc/post_trim/{sample}_1_val_1_fastqc.html", "fastqc/post_trim/{sample}_2_val_2_fastqc.html"]
+    log: "logs/fastqc_post_{sample}.log"
+    resources:
+        mem_mb=4096,
+        threads=2
+    shell:
+        "fastqc {input} -o fastqc/post_trim/ -t {resources.threads} "
+        "2> {log}"

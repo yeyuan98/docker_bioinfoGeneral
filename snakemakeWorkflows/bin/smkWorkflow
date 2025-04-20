@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Forward arguments
+/usr/bin/python3 /usr/local/bin/snakemakeWorkflows/smkWorkflow.py "$@"

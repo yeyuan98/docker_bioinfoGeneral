@@ -1,0 +1,65 @@
+# Snakefile
+import os
+
+def parse_sra_list():
+    paired = []
+    single = []
+    current_section = None
+    
+    with open("sra_list.txt") as f:
+        for line in f:
+            line = line.strip()
+            if line == ":paired:":
+                current_section = "paired"
+            elif line == ":single:":
+                current_section = "single"
+            elif line and current_section:
+                if current_section == "paired":
+                    paired.append(line)
+                else:
+                    single.append(line)
+    return paired, single
+
+paired_runs, single_runs = parse_sra_list()
+
+rule all:
+    input:
+        expand("download/{acc}.fastq.gz", acc=single_runs),
+        expand("download/{acc}_{n}.fastq.gz", acc=paired_runs, n=[1,2])
+
+rule prefetch:
+    output:
+        "cache/{acc}.sra"
+    params:
+        cache_dir = "cache"
+    shell:
+        "prefetch --output-directory {params.cache_dir} {wildcards.acc} && "
+        "mv {params.cache_dir}/{wildcards.acc}/*.sra {output}"
+
+# Paired-end processing
+rule fasterq_dump_paired:
+    input:
+        "cache/{acc}.sra"
+    output:
+        temp("temp/{acc}_1.fastq"),
+        temp("temp/{acc}_2.fastq")
+    shell:
+        "fasterq-dump --split-3 --outdir temp --threads 6 {input}"
+
+# Single-end processing  
+rule fasterq_dump_single:
+    input:
+        #"cache/{acc,[^_]+}.sra"
+        "cache/{acc}.sra"
+    output:
+        temp("temp/{acc,[^_]+}.fastq")
+    shell:
+        "fasterq-dump --outdir temp --threads 6 {input}"
+
+rule compress:
+    input:
+        "temp/{file}.fastq"
+    output:
+        "download/{file}.fastq.gz"
+    shell:
+        "pigz -c {input} > {output} && rm {input}"

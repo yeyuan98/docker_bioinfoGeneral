@@ -1,0 +1,64 @@
+# Configuration file loading
+configfile: "AlignSTAR.yaml"
+
+# Import core rules
+include: "/usr/local/bin/snakemakeWorkflows/include/Snakefile_sequencing_core"
+
+# Detect samples from input files
+if config['input_type'] == "paired":
+    SAMPLES, = glob_wildcards("rawdata/{sample}_1.fastq.gz")
+else:
+    SAMPLES, = glob_wildcards("rawdata/{sample}.fastq.gz")
+
+# Final output targets
+rule all:
+    input:
+        # Alignment
+        expand("alignment/{sample}.sorted.bam.bai", sample=SAMPLES),
+        # fastQC (rules see end)
+        fastqc_input
+
+# Alignment with STAR
+def star_align_input(wildcards):
+    if config['input_type'] == "paired":
+        R1 = f"trimmed/{wildcards.sample}_1_val_1.fq.gz"
+        R2 = f"trimmed/{wildcards.sample}_2_val_2.fq.gz"
+        return {'R1': R1, 'R2': R2}
+    elif config['input_type'] == "single":
+        return {'single': f"trimmed/{wildcards.sample}_trimmed.fq.gz"}
+    else:
+        raise Exception("Invalid input_type in config.")
+
+rule star_align:
+    input:
+        unpack(star_align_input)
+    output:
+        bam = "alignment/{sample}.sorted.bam"
+    log: "logs/star_{sample}.log"
+    resources:
+        mem_mb=config['star']['mem_mb'],
+        threads=config['star']['thread']
+    params:
+        prefix = "alignment/{sample}.",
+        args = config['star'][config['input_type']],
+        genomeIdxDir=config['star']['genome_index'],
+        tempDirRoot=config['star']['temp_root'],
+        # Dynamic input files
+        input_files=lambda wildcards, input:
+            f"{input.R1} {input.R2}" if config['input_type'] == "paired" 
+             else f"{input.single}"
+    shell:
+        """
+        STAR --genomeDir {params.genomeIdxDir} \
+             --genomeLoad LoadAndRemove \
+             --readFilesIn {params.input_files} \
+             --readFilesCommand zcat \
+             --runThreadN {resources.threads} \
+             --outSAMtype BAM SortedByCoordinate \
+             --outFileNamePrefix {params.prefix} \
+             --quantMode GeneCounts \
+             --outTmpDir {params.tempDirRoot}/{wildcards.sample} \
+             {params.args} 2>{log} 1>&2
+        mv {params.prefix}Aligned.sortedByCoord.out.bam {output.bam}
+        mv {params.prefix}Log.final.out {params.prefix}Log.out
+        """

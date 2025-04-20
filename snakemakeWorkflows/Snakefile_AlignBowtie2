@@ -1,0 +1,54 @@
+# Configuration file loading
+configfile: "AlignBowtie2.yaml"
+
+# Import core rules
+include: "/usr/local/bin/snakemakeWorkflows/include/Snakefile_sequencing_core"
+
+# Detect samples from input files
+if config['input_type'] == "paired":
+    SAMPLES, = glob_wildcards("rawdata/{sample}_1.fastq.gz")
+else:
+    SAMPLES, = glob_wildcards("rawdata/{sample}.fastq.gz")
+
+# Final output targets
+rule all:
+    input:
+        # Alignment
+        expand("alignment/{sample}.sorted.bam.bai", sample=SAMPLES),
+        # fastQC (rules see end)
+        fastqc_input
+
+# Alignment with Bowtie2
+def bowtie2_align_input(wildcards):
+    if (config['input_type'] == "paired"):
+        R1 = f"trimmed/{wildcards.sample}_1_val_1.fq.gz"
+        R2 = f"trimmed/{wildcards.sample}_2_val_2.fq.gz"
+        return {'R1': R1, 'R2': R2}
+    elif (config['input_type'] == "single"):
+        return {'single': f"trimmed/{wildcards.sample}_trimmed.fq.gz"}
+    else:
+        raise Exception("Invalid input_type in config.")
+rule bowtie2_align:
+    input:
+        # Dynamic input handling for paired/single data
+        unpack(bowtie2_align_input)
+    output:
+        "alignment/{sample}.sam"
+    log: "logs/bowtie2_{sample}.log"
+    resources:
+        mem_mb=config['bowtie2']['mem_mb'],
+        threads=config['bowtie2']['thread']
+    params:
+        index_dir=config['bowtie2']['genome_index'],
+        args=config['bowtie2'][config['input_type']],
+        # Dynamic input parameters based on input type
+        input_args=lambda wildcards, input:
+            f"-1 {input.R1} -2 {input.R2}" if config['input_type'] == "paired" 
+             else f"-U {input.single}"
+    shell:
+        """
+        bowtie2 -x {params.index_dir} \\
+        {params.input_args} \\
+        -p {resources.threads} {params.args} \\
+        -S {output} 2> {log}
+        """

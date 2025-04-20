@@ -82,18 +82,20 @@ RUN chmod +x /usr/local/bin/FastQC/fastqc && \
 RUN ln -s /usr/local/bin/TrimGalore-0.6.10/trim_galore /usr/local/bin/trim_galore
 
 # Modify path to include cutadapt library
-RUN echo 'export PATH="$PATH:/usr/local/bin/.local.pip3/bin"' >> ~/.bashrc
-RUN echo 'export PYTHONPATH="/usr/local/bin/.local.pip3/lib/python3.9/site-packages"' >> ~/.bashrc
+RUN echo 'export PATH="$PATH:/usr/local/bin/.local.pip3/bin"' >> ~/.profile
+RUN echo 'export PYTHONPATH="/usr/local/bin/.local.pip3/lib/python3.9/site-packages"' >> ~/.profile
 
-# Verify installations
-RUN echo "Tool versions:" && \
-    samtools --version && \
-    bedtools --version && \
-#    seqtk && \
-#    snakemake --version && \
-    STAR --version && \
-    bowtie2 --version
+# Copy snakemake workflows and the manager script
+COPY ./snakemakeWorkflows /usr/local/bin/snakemakeWorkflows
+RUN echo 'export PATH="$PATH:/usr/local/bin/snakemakeWorkflows/bin"' >> ~/.profile
+
+# Create container temporary folder
+RUN mkdir /home/temp
+RUN chmod 777 /home/temp
 
 # Set entrypoint and default command
-ENTRYPOINT ["/bin/bash"]
-CMD ["-i", "-l"]
+#   Always login shell (entrypoint) so ~/.profile PATH is respected
+#       Refer to BASH manual Bash-Startup-Files section.
+#   If no command given, "-i" will start an interactive shell.
+ENTRYPOINT ["/bin/bash", "-l"]
+CMD ["-i"]

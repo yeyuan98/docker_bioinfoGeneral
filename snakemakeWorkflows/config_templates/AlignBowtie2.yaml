@@ -1,0 +1,31 @@
+---
+input_type:
+# Input type, either paired or single
+#   If paired, FASTQs for each sample should end with "_1" and "_2"
+  paired
+
+trim_galore:
+# Trim Galore parameters, with paired-end and single-end defaults
+  mem_mb: 8192
+  thread: 4
+  paired:
+    "--paired --gzip"
+  single:
+    "--gzip"
+
+bowtie2:
+# Bowtie2 parameters, with paired-end and single-end defaults
+  mem_mb: 8192
+  thread: 8
+  genome_index:
+    "genome_index_bowtie2/BDGP6/BDGP6"
+  paired:
+    # -p = num of threads ; no discordant nor mixed alignments ; local alignment (soft clipping allowed)
+    "--very-sensitive-local --no-discordant --no-mixed"
+  single:
+    "--very-sensitive-local"
+
+samtools:
+# Shared Samtools parameters, threading
+  mem_mb: 2048
+  thread: 8

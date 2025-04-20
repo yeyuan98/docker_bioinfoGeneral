@@ -1,0 +1,42 @@
+---
+input_type:
+# Input type, either paired or single
+#   If paired, FASTQs for each sample should end with "_1" and "_2"
+  paired
+
+trim_galore:
+# Trim Galore parameters, with paired-end and single-end defaults
+  mem_mb: 8192
+  thread: 4
+  paired:
+    "--paired --gzip"
+  single:
+    "--gzip"
+
+star:
+  mem_mb: 12000
+  thread: 8
+  genome_index: "genome_index_star" # STAR genome index folder.
+  temp_root: "/home/temp" # Temporary storage folder. Must support FIFO.
+  # Doesn't really need much customization. 
+  # Those below are taken from the "ENCODE Options" section.
+  # Limit sorting BAM RAM to 10GB
+  paired: |
+    --outFilterMultimapNmax 20 \
+    --alignSJoverhangMin 8 \
+    --alignSJDBoverhangMin 1 \
+    --outFilterMismatchNmax 999 \
+    --outFilterMismatchNoverLmax 0.04 \
+    --limitBAMsortRAM 10000000000
+  single: |
+    --outFilterMultimapNmax 20 \
+    --alignSJoverhangMin 8 \
+    --alignSJDBoverhangMin 1 \
+    --outFilterMismatchNmax 999 \
+    --outFilterMismatchNoverLmax 0.04 \
+    --limitBAMsortRAM 10000000000
+
+samtools:
+# Shared Samtools parameters, threading
+  mem_mb: 2048
+  thread: 8

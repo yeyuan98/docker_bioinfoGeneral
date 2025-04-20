@@ -1,0 +1,23 @@
+---------------
+Download FASTQ files from NCBI SRA
+
+Ye Yuan
+Apr 16, 2025
+
+Workflow: prefetch -> fasterq-dump -> pigz
+
+---------------
+Input: *sra_list.txt* containing accession numbers (one per row). Two special heading rows specifies whether the data is paired-end or single-end.
+
+Input Example (will download two paired- and one single-end runs):
+
+:paired:
+SRR8360156
+SRR8360157
+:single:
+SRR3177676
+
+------
+Output: final downloads will be in the download folder in current WD.
+
+Also store the prefetch cache in the cache folder in current WD.

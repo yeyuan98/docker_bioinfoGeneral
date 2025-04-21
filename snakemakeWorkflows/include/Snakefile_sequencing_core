@@ -55,13 +55,13 @@ rule trim_galore:
         "trimmed/{sample}_trimmed.fq.gz" if config['input_type'] == "single" else 
         ["trimmed/{sample}_1_val_1.fq.gz", "trimmed/{sample}_2_val_2.fq.gz"]
     log: "logs/trim_galore_{sample}.log"
+    threads: config['trim_galore']['thread']
     resources:
-        mem_mb=config['trim_galore']['mem_mb'],
-        threads=config['trim_galore']['thread']
+        mem_mb=config['trim_galore']['mem_mb']
     params:
         args=config['trim_galore'][config['input_type']]
     shell:
-        ("trim_galore {params.args} --cores {resources.threads} "
+        ("trim_galore {params.args} --cores {threads} "
          "--output_dir trimmed {input} 2> {log}")
 
 # SAM to sorted BAM conversion
@@ -71,11 +71,11 @@ rule samtools_sort:
     output:
         "alignment/{sample}.sorted.bam"
     log: "logs/samtools_sort_{sample}.log"
+    threads: config['samtools']['thread']
     resources:
-        mem_mb=config['samtools']['mem_mb'],
-        threads=config['samtools']['thread']
+        mem_mb=config['samtools']['mem_mb']
     shell:
-        ("samtools sort -@ {resources.threads} {input} "
+        ("samtools sort -@ {threads} {input} "
          "-o {output} 2> {log} && rm {input}")
 
 # BAM indexing
@@ -85,11 +85,11 @@ rule samtools_index:
     output:
         "alignment/{sample}.sorted.bam.bai"
     log: "logs/samtools_index_{sample}.log"
+    threads: config['samtools']['thread']
     resources:
-        mem_mb=config['samtools']['mem_mb'],
-        threads=config['samtools']['thread']
+        mem_mb=config['samtools']['mem_mb']
     shell:
-        "samtools index -@ {resources.threads} {input} 2> {log}"
+        "samtools index -@ {threads} {input} 2> {log}"
 
 # Quality control before trimming
 rule fastqc_pre_trim:
@@ -100,12 +100,11 @@ rule fastqc_pre_trim:
         "fastqc/pre_trim/{sample}_fastqc.html" if config['input_type'] == "single" else 
         ["fastqc/pre_trim/{sample}_1_fastqc.html", "fastqc/pre_trim/{sample}_2_fastqc.html"]
     log: "logs/fastqc_pre_{sample}.log"
+    threads: 2
     resources:
-        mem_mb=2048,
-        threads=2
+        mem_mb=2048
     shell:
-        "fastqc {input} -o fastqc/pre_trim/ -t {resources.threads} "
-        "2> {log}"
+        "fastqc {input} -o fastqc/pre_trim/ -t {threads} 2> {log}"
 
 # Quality control after trimming
 rule fastqc_post_trim:
@@ -115,9 +114,8 @@ rule fastqc_post_trim:
         "fastqc/post_trim/{sample}_trimmed_fastqc.html" if config['input_type'] == "single" else 
         ["fastqc/post_trim/{sample}_1_val_1_fastqc.html", "fastqc/post_trim/{sample}_2_val_2_fastqc.html"]
     log: "logs/fastqc_post_{sample}.log"
+    threads: 2
     resources:
-        mem_mb=4096,
-        threads=2
+        mem_mb=4096
     shell:
-        "fastqc {input} -o fastqc/post_trim/ -t {resources.threads} "
-        "2> {log}"
+        "fastqc {input} -o fastqc/post_trim/ -t {threads} 2> {log}"

@@ -35,9 +35,9 @@ rule bowtie2_align:
     output:
         "alignment/{sample}.sam"
     log: "logs/bowtie2_{sample}.log"
+    threads: config['bowtie2']['thread']
     resources:
-        mem_mb=config['bowtie2']['mem_mb'],
-        threads=config['bowtie2']['thread']
+        mem_mb=config['bowtie2']['mem_mb']
     params:
         index_dir=config['bowtie2']['genome_index'],
         args=config['bowtie2'][config['input_type']],
@@ -49,6 +49,6 @@ rule bowtie2_align:
         """
         bowtie2 -x {params.index_dir} \\
         {params.input_args} \\
-        -p {resources.threads} {params.args} \\
+        -p {threads} {params.args} \\
         -S {output} 2> {log}
         """

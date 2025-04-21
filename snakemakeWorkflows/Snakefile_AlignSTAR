@@ -35,9 +35,9 @@ rule star_align:
     output:
         bam = "alignment/{sample}.sorted.bam"
     log: "logs/star_{sample}.log"
+    threads: config['star']['thread']
     resources:
-        mem_mb=config['star']['mem_mb'],
-        threads=config['star']['thread']
+        mem_mb=config['star']['mem_mb']
     params:
         prefix = "alignment/{sample}.",
         args = config['star'][config['input_type']],
@@ -53,7 +53,7 @@ rule star_align:
              --genomeLoad LoadAndRemove \
              --readFilesIn {params.input_files} \
              --readFilesCommand zcat \
-             --runThreadN {resources.threads} \
+             --runThreadN {threads} \
              --outSAMtype BAM SortedByCoordinate \
              --outFileNamePrefix {params.prefix} \
              --quantMode GeneCounts \

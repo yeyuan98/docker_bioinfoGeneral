@@ -43,8 +43,9 @@ rule fasterq_dump_paired:
     output:
         temp("temp/{acc}_1.fastq"),
         temp("temp/{acc}_2.fastq")
+    threads: 6
     shell:
-        "fasterq-dump --split-3 --outdir temp --threads 6 {input}"
+        "fasterq-dump --split-3 --outdir temp --threads {threads} {input}"
 
 # Single-end processing  
 rule fasterq_dump_single:
@@ -53,13 +54,15 @@ rule fasterq_dump_single:
         "cache/{acc}.sra"
     output:
         temp("temp/{acc,[^_]+}.fastq")
+    threads: 6
     shell:
-        "fasterq-dump --outdir temp --threads 6 {input}"
+        "fasterq-dump --outdir temp --threads {threads} {input}"
 
 rule compress:
     input:
         "temp/{file}.fastq"
     output:
         "download/{file}.fastq.gz"
+    threads: 4
     shell:
-        "pigz -c {input} > {output} && rm {input}"
+        "pigz -c -p {threads} {input} > {output} && rm {input}"

@@ -6,7 +6,7 @@ input_type:
 
 trim_galore:
 # Trim Galore parameters, with paired-end and single-end defaults
-  mem_mb: 8192
+  mem_mb: 3000
   thread: 4
   paired:
     "--paired --gzip"
@@ -15,7 +15,7 @@ trim_galore:
 
 star:
   mem_mb: 12000
-  thread: 8
+  thread: 16
   genome_index: "genome_index_star" # STAR genome index folder.
   temp_root: "/home/temp" # Temporary storage folder. Must support FIFO.
   # Doesn't really need much customization. 

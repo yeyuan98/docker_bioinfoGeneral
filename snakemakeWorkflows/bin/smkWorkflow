@@ -1,4 +1,4 @@
 #!/bin/bash
 
-# Forward arguments
-/usr/bin/python3 /usr/local/bin/snakemakeWorkflows/smkWorkflow.py "$@"
+# Forward arguments (use conda env)
+/opt/conda/bin/python3 /usr/local/bin/snakemakeWorkflows/smkWorkflow.py "$@"

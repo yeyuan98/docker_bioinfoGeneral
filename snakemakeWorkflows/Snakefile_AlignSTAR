@@ -60,5 +60,4 @@ rule star_align:
              --outTmpDir {params.tempDirRoot}/{wildcards.sample} \
              {params.args} 2>{log} 1>&2
         mv {params.prefix}Aligned.sortedByCoord.out.bam {output.bam}
-        mv {params.prefix}Log.final.out {params.prefix}Log.out
         """

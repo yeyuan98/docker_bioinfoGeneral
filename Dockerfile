@@ -35,6 +35,19 @@ RUN echo 'exec "$@"' >> /usr/local/bin/_path.sh
 RUN chmod 755 /usr/local/bin/_path.sh
 USER $MAMBA_USER
 
+# Patch: IRFinder
+#   Original version enforces 32GB memory, which is not necessary for smaller genomes (e.g., dm6)
+COPY --chown=$MAMBA_USER:$MAMBA_USER ./patch_files/IRFinder /opt/conda/opt/irfinder-1.3.1/bin/IRFinder
+RUN chmod 755 /opt/conda/opt/irfinder-1.3.1/bin/IRFinder
+#   Original version has path errors on perl (pointing to /usr/bin/perl). Fix here.
+USER root
+RUN ln -s /opt/conda/bin/perl /usr/bin/perl
+USER $MAMBA_USER
+#   Alpine's busybox xargs does not support max-args parameters used by IRFinder.
+USER root
+RUN apk add --no-cache findutils
+USER $MAMBA_USER
+
 # Create container temporary folder
 #   For programs that require Linux FS (e.g., STAR requires FIFO files for runtime temp folder)
 #       https://github.com/alexdobin/STAR/issues/1776
